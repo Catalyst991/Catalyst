@@ -4,6 +4,7 @@ import customtkinter as ctk
 
 from catalyst.tool_registry import build_registry
 from catalyst.ui import theme
+from catalyst.ui.widgets import Panel
 
 SIDEBAR_WIDTH = 230
 TOOL_ICON = "▤"
@@ -30,19 +31,19 @@ class CatalystApp(ctk.CTk):
 
         self._build_sidebar()
 
-        self.container = ctk.CTkFrame(self, fg_color=theme.BG_APP, corner_radius=0)
+        self.container = Panel(self, bg=theme.BG_APP)
         self.container.grid(row=0, column=1, sticky="nsew")
 
         self.show_home()
 
     def _build_sidebar(self):
-        sidebar = ctk.CTkFrame(self, fg_color=theme.BG_SIDEBAR, corner_radius=0, width=SIDEBAR_WIDTH)
+        sidebar = Panel(self, bg=theme.BG_SIDEBAR, width=SIDEBAR_WIDTH)
         sidebar.grid(row=0, column=0, sticky="nsw")
         sidebar.grid_propagate(False)
 
-        brand = ctk.CTkFrame(sidebar, fg_color="transparent", cursor="hand2")
+        brand = Panel(sidebar, bg=theme.BG_SIDEBAR, cursor="hand2")
         brand.pack(fill="x", padx=theme.PAD_LG, pady=(theme.PAD_XL, theme.PAD_LG))
-        brand_row = ctk.CTkFrame(brand, fg_color="transparent")
+        brand_row = Panel(brand, bg=theme.BG_SIDEBAR)
         brand_row.pack(anchor="w")
         brand_mark = ctk.CTkLabel(
             brand_row, text="◆", font=theme.font_title(), text_color=theme.ACCENT
@@ -59,10 +60,10 @@ class CatalystApp(ctk.CTk):
         for widget in (brand, brand_row, brand_mark, brand_title, brand_subtitle):
             widget.bind("<Button-1>", lambda _event: self.show_home())
 
-        divider = ctk.CTkFrame(sidebar, fg_color=theme.BORDER, height=1)
+        divider = Panel(sidebar, bg=theme.BORDER, height=1)
         divider.pack(fill="x", padx=theme.PAD_LG, pady=(0, theme.PAD_MD))
 
-        nav = ctk.CTkFrame(sidebar, fg_color="transparent")
+        nav = Panel(sidebar, bg=theme.BG_SIDEBAR)
         nav.pack(fill="x", padx=theme.PAD_MD)
         for tool in self.tools:
             button = ctk.CTkButton(
@@ -96,7 +97,7 @@ class CatalystApp(ctk.CTk):
         self._clear_container()
         self._set_active_nav(None)
 
-        empty_state = ctk.CTkFrame(self.container, fg_color="transparent")
+        empty_state = Panel(self.container, bg=theme.BG_APP)
         empty_state.place(relx=0.5, rely=0.45, anchor="center")
         ctk.CTkLabel(
             empty_state, text="◇", font=theme.font(48), text_color=theme.TEXT_MUTED

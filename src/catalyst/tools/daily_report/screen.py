@@ -11,7 +11,7 @@ from catalyst.tools.daily_report.pipeline import (
     generate_report,
 )
 from catalyst.ui import theme
-from catalyst.ui.widgets import Card, PrimaryButton, SecondaryButton
+from catalyst.ui.widgets import Card, OptionGroup, Panel, PrimaryButton, SecondaryButton
 
 TEMPLATE_PATH = Path(__file__).parent / "assets" / "template.pptx"
 
@@ -31,9 +31,9 @@ def _step_label(master, text: str) -> ctk.CTkLabel:
     )
 
 
-class DailyReportScreen(ctk.CTkFrame):
+class DailyReportScreen(Panel):
     def __init__(self, master, on_back):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, bg=theme.BG_APP)
         self.on_back = on_back
         self.excel_path: Path | None = None
 
@@ -70,14 +70,14 @@ class DailyReportScreen(ctk.CTkFrame):
         card = Card(self)
         card.pack(fill="x", padx=theme.PAD_XL, pady=(0, theme.PAD_MD))
 
-        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner = Panel(card, bg=theme.BG_SURFACE)
         inner.pack(fill="x", padx=theme.PAD_LG, pady=theme.PAD_LG)
         _step_label(inner, "Step 1 — Excel file").pack(anchor="w", pady=(0, theme.PAD_SM))
 
-        row = ctk.CTkFrame(inner, fg_color="transparent")
+        row = Panel(inner, bg=theme.BG_SURFACE)
         row.pack(fill="x")
 
-        info = ctk.CTkFrame(row, fg_color="transparent")
+        info = Panel(row, bg=theme.BG_SURFACE)
         info.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(info, text="📄", font=theme.font(22), text_color=theme.TEXT_SECONDARY).pack(
             side="left", padx=(0, theme.PAD_SM)
@@ -99,29 +99,20 @@ class DailyReportScreen(ctk.CTkFrame):
         card = Card(self)
         card.pack(fill="x", padx=theme.PAD_XL, pady=(0, theme.PAD_MD))
 
-        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner = Panel(card, bg=theme.BG_SURFACE)
         inner.pack(fill="x", padx=theme.PAD_LG, pady=theme.PAD_LG)
         _step_label(inner, "Step 2 — Output format").pack(anchor="w", pady=(0, theme.PAD_SM))
 
-        self.format_selector = ctk.CTkSegmentedButton(
+        self.format_selector = OptionGroup(
             inner,
+            bg=theme.BG_SURFACE,
             values=list(OUTPUT_FORMAT_LABELS),
-            font=theme.font_body(),
-            fg_color=theme.BG_SURFACE,
-            border_width=0,
-            selected_color=theme.ACCENT,
-            selected_hover_color=theme.ACCENT_HOVER,
-            unselected_color=theme.BG_SURFACE_HOVER,
-            unselected_hover_color=theme.BG_SURFACE_HOVER,
-            text_color=theme.TEXT_PRIMARY,
-            corner_radius=theme.RADIUS_MD,
-            height=36,
+            default="PowerPoint only",
         )
-        self.format_selector.set("PowerPoint only")
         self.format_selector.pack(fill="x")
 
     def _build_generate_button(self):
-        footer = ctk.CTkFrame(self, fg_color="transparent")
+        footer = Panel(self, bg=theme.BG_APP)
         footer.pack(fill="x", padx=theme.PAD_XL, pady=(theme.PAD_SM, theme.PAD_XL))
         PrimaryButton(footer, text="Generate Report", command=self.generate).pack(fill="x")
 

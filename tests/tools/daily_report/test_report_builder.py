@@ -168,12 +168,45 @@ def test_filled_table_cells_use_the_correct_font_size_and_alignment(template_pat
     prs = build_report(template_path, comments, generation_date=datetime.date(2026, 7, 28))
 
     table = _find_table(prs.slides[1])
-    for col_index, (expected_size, expected_alignment) in enumerate(COLUMN_STYLES):
+    for col_index, (expected_size, expected_alignment, _expected_rtl) in enumerate(COLUMN_STYLES):
         cell = table.cell(1, col_index)
         run = cell.text_frame.paragraphs[0].runs[0]
         assert run.font.size == expected_size
         assert run.font.name == "Segoe UI"
         assert cell.text_frame.paragraphs[0].alignment == expected_alignment
+
+
+COMMENT_COLUMN_INDEX = 2
+TONE_COLUMN_INDEX = 6
+
+
+def _paragraph_rtl(cell) -> bool:
+    pPr = cell.text_frame.paragraphs[0]._p.find(
+        "{http://schemas.openxmlformats.org/drawingml/2006/main}pPr"
+    )
+    return pPr is not None and pPr.get("rtl") == "1"
+
+
+def test_comment_and_tone_columns_are_right_to_left(template_path):
+    comments = [make_comment()]
+
+    prs = build_report(template_path, comments, generation_date=datetime.date(2026, 7, 28))
+
+    table = _find_table(prs.slides[1])
+    assert _paragraph_rtl(table.cell(1, COMMENT_COLUMN_INDEX)) is True
+    assert _paragraph_rtl(table.cell(1, TONE_COLUMN_INDEX)) is True
+
+
+def test_only_comment_and_tone_columns_are_right_to_left(template_path):
+    comments = [make_comment()]
+
+    prs = build_report(template_path, comments, generation_date=datetime.date(2026, 7, 28))
+
+    table = _find_table(prs.slides[1])
+    for col_index in range(7):
+        if col_index in (COMMENT_COLUMN_INDEX, TONE_COLUMN_INDEX):
+            continue
+        assert _paragraph_rtl(table.cell(1, col_index)) is False
 
 
 def test_all_data_rows_have_the_same_fixed_height(template_path):

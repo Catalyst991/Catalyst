@@ -14,16 +14,17 @@ FONT_NAME = "Segoe UI"
 
 LINK_COLUMN_INDEX = 3
 
-# (font size, alignment) per column, captured from the real template's filled cells
-# (identical across every filled row and every content slide in the real file)
+# (font size, alignment, right-to-left) per column, captured from the real template's
+# filled cells (identical across every filled row and every content slide in the real
+# file), with alignment/rtl adjusted for the Arabic-language columns
 COLUMN_STYLES = [
-    (Pt(8.19), PP_ALIGN.CENTER),  # Date
-    (Pt(8.19), PP_ALIGN.LEFT),  # User name
-    (Pt(8.0), PP_ALIGN.LEFT),  # Comment
-    (Pt(7.9), PP_ALIGN.LEFT),  # Link
-    (Pt(8.19), PP_ALIGN.CENTER),  # Country
-    (Pt(8.19), PP_ALIGN.CENTER),  # No. of Followers
-    (Pt(8.0), PP_ALIGN.CENTER),  # Tone (النبرة)
+    (Pt(8.19), PP_ALIGN.CENTER, False),  # Date
+    (Pt(8.19), PP_ALIGN.CENTER, False),  # User name
+    (Pt(8.0), PP_ALIGN.RIGHT, True),  # Comment
+    (Pt(7.9), PP_ALIGN.LEFT, False),  # Link
+    (Pt(8.19), PP_ALIGN.CENTER, False),  # Country
+    (Pt(8.19), PP_ALIGN.CENTER, False),  # No. of Followers
+    (Pt(8.0), PP_ALIGN.RIGHT, True),  # Tone (النبرة)
 ]
 
 ARABIC_MONTH_NAMES = {
@@ -71,10 +72,12 @@ def _find_table(slide):
     raise ValueError("no table found on slide")
 
 
-def _set_cell_text(cell, text: str, size: Pt, alignment: PP_ALIGN) -> None:
+def _set_cell_text(cell, text: str, size: Pt, alignment: PP_ALIGN, rtl: bool) -> None:
     cell.text = text
     paragraph = cell.text_frame.paragraphs[0]
     paragraph.alignment = alignment
+    if rtl:
+        paragraph._pPr.set("rtl", "1")
     run = paragraph.runs[0]
     run.font.size = size
     run.font.name = FONT_NAME
@@ -98,9 +101,9 @@ def _fill_content_table(slide, comments):
             _normalize_whitespace(comment.tone),
         ]
         for col_index, value in enumerate(values):
-            size, alignment = COLUMN_STYLES[col_index]
+            size, alignment, rtl = COLUMN_STYLES[col_index]
             cell = table.cell(row_index, col_index)
-            _set_cell_text(cell, value, size, alignment)
+            _set_cell_text(cell, value, size, alignment, rtl)
             if col_index == LINK_COLUMN_INDEX:
                 cell.text_frame.paragraphs[0].runs[0].hyperlink.address = value
 

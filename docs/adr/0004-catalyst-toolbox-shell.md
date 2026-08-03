@@ -1,0 +1,3 @@
+# Structure the app as an extensible toolbox (Catalyst), not a single-purpose app
+
+The user confirmed this app — named **Catalyst** — will grow beyond the Daily Report Generator to include other tools over time. Rather than building the Report Generator as its own standalone app and retrofitting a shared shell around it later, Catalyst opens to a home screen listing available **Tools** (currently just the Daily Report Generator); selecting one opens it. New Tools are added as new home-screen entries, without changing how existing Tools work. This costs a small amount of extra structure now, in exchange for avoiding a much more expensive rearchitecture once the second Tool arrives.

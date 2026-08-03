@@ -24,7 +24,7 @@ COLUMN_STYLES = [
     (Pt(7.9), PP_ALIGN.LEFT, False),  # Link
     (Pt(8.19), PP_ALIGN.CENTER, False),  # Country
     (Pt(8.19), PP_ALIGN.CENTER, False),  # No. of Followers
-    (Pt(8.0), PP_ALIGN.RIGHT, True),  # Tone (النبرة)
+    (Pt(8.0), PP_ALIGN.CENTER, True),  # Tone (النبرة)
 ]
 
 ARABIC_MONTH_NAMES = {

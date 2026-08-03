@@ -3,7 +3,12 @@ import datetime
 import openpyxl
 import pytest
 
-from catalyst.tools.daily_report.excel_reader import MissingColumnError, MissingSheetError, read_comments
+from catalyst.tools.daily_report.excel_reader import (
+    MissingColumnError,
+    MissingSheetError,
+    NoCommentsError,
+    read_comments,
+)
 
 COLUMNS = ["Date", "User name", "Comment", "Link", "Country", "No. of Followers", "النبرة"]
 
@@ -88,6 +93,17 @@ def test_raises_missing_column_error_when_a_required_column_is_absent(workbook_p
 
     assert str(exc_info.value) == (
         "This file is missing the 'Comment' column — please check the file and try again."
+    )
+
+
+def test_raises_no_comments_error_when_the_users_sheet_has_no_data_rows(workbook_path):
+    make_workbook(workbook_path, rows=[])
+
+    with pytest.raises(NoCommentsError) as exc_info:
+        read_comments(workbook_path)
+
+    assert str(exc_info.value) == (
+        "This file doesn't have any Comments to include — please check the file and try again."
     )
 
 

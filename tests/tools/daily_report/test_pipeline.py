@@ -5,7 +5,7 @@ import pytest
 from pptx import Presentation
 from pypdf import PdfReader
 
-from catalyst.tools.daily_report.excel_reader import MissingSheetError
+from catalyst.tools.daily_report.excel_reader import MissingSheetError, NoCommentsError
 from catalyst.tools.daily_report.pipeline import generate_report
 
 TABLE_HEADERS = ["Date", "User name", "Comment", "Link", "Country", "No. of Followers", "النبرة"]
@@ -57,6 +57,22 @@ def test_writes_no_file_when_the_excel_file_fails_validation(tmp_path, template_
     save_directory.mkdir()
 
     with pytest.raises(MissingSheetError):
+        generate_report(
+            excel_path=excel_path,
+            template_path=template_path,
+            save_directory=save_directory,
+            generation_date=datetime.date(2026, 7, 28),
+        )
+
+    assert list(save_directory.iterdir()) == []
+
+
+def test_writes_no_file_when_the_excel_file_has_zero_comments(tmp_path, template_path):
+    excel_path = make_excel(tmp_path / "export.xlsx", rows=[])
+    save_directory = tmp_path / "reports"
+    save_directory.mkdir()
+
+    with pytest.raises(NoCommentsError):
         generate_report(
             excel_path=excel_path,
             template_path=template_path,

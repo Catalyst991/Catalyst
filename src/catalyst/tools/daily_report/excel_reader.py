@@ -24,6 +24,11 @@ class MissingColumnError(ExcelValidationError):
         super().__init__(f"This file is missing the '{column}' column — please check the file and try again.")
 
 
+class NoCommentsError(ExcelValidationError):
+    def __init__(self):
+        super().__init__("This file doesn't have any Comments to include — please check the file and try again.")
+
+
 @dataclass
 class Comment:
     date: date
@@ -62,4 +67,8 @@ def read_comments(path) -> list[Comment]:
                 tone=tone,
             )
         )
+
+    if not comments:
+        raise NoCommentsError()
+
     return comments

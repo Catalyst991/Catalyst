@@ -208,6 +208,56 @@ def test_link_cell_has_a_working_hyperlink(template_path):
     assert run.hyperlink.address == "https://x.com/example/status/123"
 
 
+def test_more_than_seven_comments_creates_a_second_content_slide(template_path):
+    comments = [make_comment(user_name=f"User {i}") for i in range(8)]
+
+    prs = build_report(template_path, comments, generation_date=datetime.date(2026, 7, 28))
+
+    assert len(prs.slides) == 4
+    first_table = _find_table(prs.slides[1])
+    second_table = _find_table(prs.slides[2])
+    assert [first_table.rows[i].cells[1].text for i in range(1, 8)] == [f"User {i}" for i in range(7)]
+    assert second_table.rows[1].cells[1].text == "User 7"
+    for row_index in range(2, len(second_table.rows)):
+        assert all(cell.text == "" for cell in second_table.rows[row_index].cells)
+
+
+def test_exact_multiple_of_seven_creates_no_partially_empty_third_slide(template_path):
+    comments = [make_comment(user_name=f"User {i}") for i in range(14)]
+
+    prs = build_report(template_path, comments, generation_date=datetime.date(2026, 7, 28))
+
+    assert len(prs.slides) == 4
+    first_table = _find_table(prs.slides[1])
+    second_table = _find_table(prs.slides[2])
+    assert all(first_table.rows[i].cells[1].text != "" for i in range(1, 8))
+    assert all(second_table.rows[i].cells[1].text != "" for i in range(1, 8))
+
+
+def test_eighteen_comments_creates_three_content_slides_with_correct_page_numbers_and_truncation(template_path):
+    comments = [make_comment(user_name=f"User {i}", comment="a" * 95) for i in range(18)]
+
+    prs = build_report(template_path, comments, generation_date=datetime.date(2026, 7, 28))
+
+    assert len(prs.slides) == 5
+    tables = [_find_table(prs.slides[i]) for i in (1, 2, 3)]
+    assert sum(1 for t in tables for i in range(1, 8) if t.rows[i].cells[1].text != "") == 18
+    third_table = tables[2]
+    assert [third_table.rows[i].cells[1].text for i in range(1, 5)] == [f"User {i}" for i in range(14, 18)]
+    for row_index in range(5, len(third_table.rows)):
+        assert all(cell.text == "" for cell in third_table.rows[row_index].cells)
+
+    assert _page_number_text(prs.slides[1]) == "2"
+    assert _page_number_text(prs.slides[2]) == "3"
+    assert _page_number_text(prs.slides[3]) == "4"
+
+    for table in tables:
+        for row_index in range(1, 8):
+            text = table.rows[row_index].cells[2].text
+            if text:
+                assert text == ("a" * 90) + "..."
+
+
 def test_end_slide_is_unchanged_from_the_template(template_path):
     comments = [make_comment()]
 

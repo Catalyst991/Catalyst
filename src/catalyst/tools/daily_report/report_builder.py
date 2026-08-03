@@ -1,3 +1,4 @@
+import copy
 from datetime import date
 
 from pptx import Presentation
@@ -7,6 +8,7 @@ from pptx.util import Pt
 from catalyst.tools.daily_report.truncate import truncate
 
 COMMENT_MAX_LENGTH = 90
+COMMENTS_PER_SLIDE = 7
 
 FONT_NAME = "Segoe UI"
 
@@ -103,6 +105,42 @@ def _fill_content_table(slide, comments):
                 cell.text_frame.paragraphs[0].runs[0].hyperlink.address = value
 
 
+def _chunk(items: list, size: int) -> list[list]:
+    chunks = [items[i : i + size] for i in range(0, len(items), size)]
+    return chunks or [[]]
+
+
+def _duplicate_slide(prs: Presentation, slide):
+    duplicate = prs.slides.add_slide(slide.slide_layout)
+    for shape in list(duplicate.shapes):
+        shape._element.getparent().remove(shape._element)
+    for shape in slide.shapes:
+        duplicate.shapes._spTree.append(copy.deepcopy(shape._element))
+    return duplicate
+
+
+def _move_slide_to_end(prs: Presentation, slide) -> None:
+    slide_id_list = prs.slides._sldIdLst
+    element = next(el for el in slide_id_list if el.get("id") == str(slide.slide_id))
+    slide_id_list.remove(element)
+    slide_id_list.append(element)
+
+
+def _build_content_slides(prs: Presentation, comments: list) -> None:
+    end_slide = prs.slides[2]
+    content_template = prs.slides[1]
+    chunks = _chunk(comments, COMMENTS_PER_SLIDE)
+
+    content_slides = [content_template]
+    for _ in chunks[1:]:
+        content_slides.append(_duplicate_slide(prs, content_template))
+
+    _move_slide_to_end(prs, end_slide)
+
+    for slide, chunk in zip(content_slides, chunks):
+        _fill_content_table(slide, chunk)
+
+
 def _set_page_numbers(prs: Presentation) -> None:
     for slide_index, slide in enumerate(prs.slides, start=1):
         for shape in slide.shapes:
@@ -113,6 +151,6 @@ def _set_page_numbers(prs: Presentation) -> None:
 def build_report(template_path, comments, generation_date: date) -> Presentation:
     prs = Presentation(template_path)
     _set_title_date(prs.slides[0], generation_date)
-    _fill_content_table(prs.slides[1], comments)
+    _build_content_slides(prs, comments)
     _set_page_numbers(prs)
     return prs

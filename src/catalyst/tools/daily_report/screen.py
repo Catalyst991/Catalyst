@@ -3,6 +3,7 @@ from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
 
+from catalyst.tools.daily_report.excel_reader import ExcelValidationError
 from catalyst.tools.daily_report.pipeline import generate_report
 
 TEMPLATE_PATH = Path(__file__).parent / "assets" / "template.pptx"
@@ -43,6 +44,9 @@ class DailyReportScreen(ctk.CTkFrame):
                 template_path=TEMPLATE_PATH,
                 save_directory=save_directory,
             )
+        except ExcelValidationError as exc:
+            messagebox.showerror("Catalyst", str(exc))
+            return
         except Exception as exc:
             messagebox.showerror("Catalyst", f"Couldn't generate the report:\n{exc}")
             return

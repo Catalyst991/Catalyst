@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+*.pptx binary
+*.ico binary
+*.exe binary
+*.dat binary

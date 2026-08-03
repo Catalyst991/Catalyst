@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import customtkinter as ctk
 
 from catalyst.tool_registry import build_registry
@@ -5,6 +7,7 @@ from catalyst.ui import theme
 
 SIDEBAR_WIDTH = 230
 TOOL_ICON = "▤"
+ICON_PATH = Path(__file__).parent / "ui" / "icon.ico"
 
 
 class CatalystApp(ctk.CTk):
@@ -16,6 +19,8 @@ class CatalystApp(ctk.CTk):
         self.geometry("980x640")
         self.minsize(760, 520)
         self.configure(fg_color=theme.BG_APP)
+        if ICON_PATH.exists():
+            self.iconbitmap(ICON_PATH)
 
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)

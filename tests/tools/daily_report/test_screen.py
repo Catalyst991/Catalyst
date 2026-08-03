@@ -69,7 +69,7 @@ def test_generate_passes_the_selected_output_format(root, tmp_path, monkeypatch)
 
     screen = DailyReportScreen(root, on_back=lambda: None)
     screen.excel_path = excel_path
-    screen.format_menu.set("PDF only")
+    screen.format_selector.set("PDF only")
     monkeypatch.setattr(
         "catalyst.tools.daily_report.screen.filedialog.askdirectory",
         lambda **kwargs: str(save_directory),
@@ -93,7 +93,7 @@ def test_shows_all_saved_paths_in_the_success_message(root, tmp_path, monkeypatc
 
     screen = DailyReportScreen(root, on_back=lambda: None)
     screen.excel_path = excel_path
-    screen.format_menu.set("Both")
+    screen.format_selector.set("Both")
     monkeypatch.setattr(
         "catalyst.tools.daily_report.screen.filedialog.askdirectory",
         lambda **kwargs: str(save_directory),

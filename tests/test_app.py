@@ -26,12 +26,12 @@ def _buttons(widget):
 
 
 def test_home_screen_lists_daily_report_generator(app):
-    button_texts = [b.cget("text") for b in _buttons(app.container)]
-    assert "Daily Report Generator" in button_texts
+    button_texts = [b.cget("text") for b in _buttons(app)]
+    assert any("Daily Report Generator" in text for text in button_texts)
 
 
 def test_selecting_daily_report_generator_opens_its_screen(app):
-    button = next(b for b in _buttons(app.container) if b.cget("text") == "Daily Report Generator")
+    button = next(b for b in _buttons(app) if "Daily Report Generator" in b.cget("text"))
 
     button.cget("command")()
 

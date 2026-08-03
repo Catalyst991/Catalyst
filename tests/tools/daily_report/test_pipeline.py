@@ -3,6 +3,7 @@ import datetime
 import openpyxl
 import pytest
 from pptx import Presentation
+from pypdf import PdfReader
 
 from catalyst.tools.daily_report.excel_reader import MissingSheetError
 from catalyst.tools.daily_report.pipeline import generate_report
@@ -31,13 +32,15 @@ def test_generates_a_pptx_file_readable_back_with_correct_contents(tmp_path, tem
     save_directory = tmp_path / "reports"
     save_directory.mkdir()
 
-    save_path = generate_report(
+    save_paths = generate_report(
         excel_path=excel_path,
         template_path=template_path,
         save_directory=save_directory,
         generation_date=datetime.date(2026, 7, 28),
     )
 
+    assert len(save_paths) == 1
+    save_path = save_paths[0]
     assert save_path.exists()
     prs = Presentation(save_path)
     assert len(prs.slides) == 3
@@ -74,13 +77,72 @@ def test_saved_filename_matches_the_title_slide_text(tmp_path, template_path):
     save_directory = tmp_path / "reports"
     save_directory.mkdir()
 
-    save_path = generate_report(
+    save_paths = generate_report(
         excel_path=excel_path,
         template_path=template_path,
         save_directory=save_directory,
         generation_date=datetime.date(2026, 7, 28),
     )
 
+    assert len(save_paths) == 1
+    save_path = save_paths[0]
     assert save_path.parent == save_directory
     assert save_path.suffix == ".pptx"
     assert save_path.stem == "تقرير الرصد اليومي – 28 يوليو"
+
+
+def test_pdf_only_saves_a_single_pdf_and_leaves_no_pptx_anywhere(tmp_path, template_path):
+    excel_path = make_excel(
+        tmp_path / "export.xlsx",
+        rows=[
+            [datetime.date(2026, 7, 27), "Design Studio", "hello world", "https://x.com/1", "KSA", 1296, "محايد"],
+        ],
+    )
+    save_directory = tmp_path / "reports"
+    save_directory.mkdir()
+
+    save_paths = generate_report(
+        excel_path=excel_path,
+        template_path=template_path,
+        save_directory=save_directory,
+        output_format="pdf",
+        generation_date=datetime.date(2026, 7, 28),
+    )
+
+    assert len(save_paths) == 1
+    pdf_path = save_paths[0]
+    assert pdf_path.suffix == ".pdf"
+    assert pdf_path.parent == save_directory
+    reader = PdfReader(pdf_path)
+    assert len(reader.pages) == 3
+
+    report_pptx_files = [p for p in tmp_path.rglob("*.pptx") if p != template_path]
+    assert report_pptx_files == []
+
+
+def test_both_saves_a_pptx_and_a_pdf_with_matching_base_filenames(tmp_path, template_path):
+    excel_path = make_excel(
+        tmp_path / "export.xlsx",
+        rows=[
+            [datetime.date(2026, 7, 27), "Design Studio", "hello world", "https://x.com/1", "KSA", 1296, "محايد"],
+        ],
+    )
+    save_directory = tmp_path / "reports"
+    save_directory.mkdir()
+
+    save_paths = generate_report(
+        excel_path=excel_path,
+        template_path=template_path,
+        save_directory=save_directory,
+        output_format="both",
+        generation_date=datetime.date(2026, 7, 28),
+    )
+
+    assert len(save_paths) == 2
+    suffixes = {p.suffix for p in save_paths}
+    assert suffixes == {".pptx", ".pdf"}
+    stems = {p.stem for p in save_paths}
+    assert stems == {"تقرير الرصد اليومي – 28 يوليو"}
+    for path in save_paths:
+        assert path.exists()
+        assert path.parent == save_directory

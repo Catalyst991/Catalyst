@@ -4,9 +4,20 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 
 from catalyst.tools.daily_report.excel_reader import ExcelValidationError
-from catalyst.tools.daily_report.pipeline import generate_report
+from catalyst.tools.daily_report.pipeline import (
+    OUTPUT_FORMAT_BOTH,
+    OUTPUT_FORMAT_PDF,
+    OUTPUT_FORMAT_PPTX,
+    generate_report,
+)
 
 TEMPLATE_PATH = Path(__file__).parent / "assets" / "template.pptx"
+
+OUTPUT_FORMAT_LABELS = {
+    "PowerPoint only": OUTPUT_FORMAT_PPTX,
+    "PDF only": OUTPUT_FORMAT_PDF,
+    "Both": OUTPUT_FORMAT_BOTH,
+}
 
 
 class DailyReportScreen(ctk.CTkFrame):
@@ -21,6 +32,11 @@ class DailyReportScreen(ctk.CTkFrame):
         self.file_label = ctk.CTkLabel(self, text="No Excel file selected")
         self.file_label.pack(pady=5)
         ctk.CTkButton(self, text="Select Excel File", command=self.select_excel_file).pack(pady=5)
+
+        self.format_menu = ctk.CTkOptionMenu(self, values=list(OUTPUT_FORMAT_LABELS))
+        self.format_menu.set("PowerPoint only")
+        self.format_menu.pack(pady=5)
+
         ctk.CTkButton(self, text="Generate", command=self.generate).pack(pady=15)
 
     def select_excel_file(self):
@@ -38,11 +54,14 @@ class DailyReportScreen(ctk.CTkFrame):
         if not save_directory:
             return
 
+        output_format = OUTPUT_FORMAT_LABELS[self.format_menu.get()]
+
         try:
-            save_path = generate_report(
+            save_paths = generate_report(
                 excel_path=self.excel_path,
                 template_path=TEMPLATE_PATH,
                 save_directory=save_directory,
+                output_format=output_format,
             )
         except ExcelValidationError as exc:
             messagebox.showerror("Catalyst", str(exc))
@@ -51,4 +70,5 @@ class DailyReportScreen(ctk.CTkFrame):
             messagebox.showerror("Catalyst", f"Couldn't generate the report:\n{exc}")
             return
 
-        messagebox.showinfo("Catalyst", f"Report saved:\n{save_path}")
+        saved_list = "\n".join(str(path) for path in save_paths)
+        messagebox.showinfo("Catalyst", f"Report saved:\n{saved_list}")

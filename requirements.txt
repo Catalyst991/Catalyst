@@ -1,3 +1,4 @@
 openpyxl
 python-pptx
 customtkinter
+pywin32

@@ -28,6 +28,7 @@ class CatalystApp(ctk.CTk):
 
         self.tools = build_registry(daily_report_open=self.open_daily_report_generator)
         self._nav_buttons: dict[str, ctk.CTkButton] = {}
+        self._active_view = "home"
 
         self._build_sidebar()
 
@@ -37,16 +38,17 @@ class CatalystApp(ctk.CTk):
         self.show_home()
 
     def _build_sidebar(self):
-        sidebar = Panel(self, bg=theme.BG_SIDEBAR, width=SIDEBAR_WIDTH)
-        sidebar.grid(row=0, column=0, sticky="nsw")
-        sidebar.grid_propagate(False)
+        self.sidebar = Panel(self, bg=theme.BG_SIDEBAR, width=SIDEBAR_WIDTH)
+        self.sidebar.grid(row=0, column=0, sticky="nsw")
+        self.sidebar.grid_propagate(False)
+        sidebar = self.sidebar
 
         brand = Panel(sidebar, bg=theme.BG_SIDEBAR, cursor="hand2")
         brand.pack(fill="x", padx=theme.PAD_LG, pady=(theme.PAD_XL, theme.PAD_LG))
         brand_row = Panel(brand, bg=theme.BG_SIDEBAR)
         brand_row.pack(anchor="w")
         brand_mark = ctk.CTkLabel(
-            brand_row, text="◆", font=theme.font_title(), text_color=theme.ACCENT
+            brand_row, text="◆", font=theme.font_title(), text_color=theme.ACCENT_SPARK
         )
         brand_mark.pack(side="left", padx=(0, 6))
         brand_title = ctk.CTkLabel(
@@ -81,6 +83,52 @@ class CatalystApp(ctk.CTk):
             button.pack(fill="x", pady=2)
             self._nav_buttons[tool.name] = button
 
+        self._build_theme_switch(sidebar)
+
+    def _build_theme_switch(self, sidebar):
+        footer = Panel(sidebar, bg=theme.BG_SIDEBAR)
+        footer.pack(side="bottom", fill="x", padx=theme.PAD_LG, pady=theme.PAD_LG)
+
+        footer_divider = Panel(sidebar, bg=theme.BORDER, height=1)
+        footer_divider.pack(side="bottom", fill="x", padx=theme.PAD_LG, pady=(0, theme.PAD_MD))
+
+        self._theme_switch_var = ctk.StringVar(value=theme.get_mode())
+        self.theme_switch = ctk.CTkSwitch(
+            footer,
+            text=self._theme_switch_label(),
+            font=theme.font_body(),
+            text_color=theme.TEXT_SECONDARY,
+            progress_color=theme.ACCENT,
+            command=self._on_theme_switch_toggled,
+            onvalue="light",
+            offvalue="dark",
+            variable=self._theme_switch_var,
+        )
+        self.theme_switch.pack(anchor="w")
+
+    def _theme_switch_label(self) -> str:
+        return "☀  Light mode" if theme.get_mode() == "light" else "🌙  Dark mode"
+
+    def _on_theme_switch_toggled(self):
+        self.set_theme_mode(self._theme_switch_var.get())
+
+    def set_theme_mode(self, mode: str) -> None:
+        theme.set_mode(mode)
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        active_view = self._active_view
+        self.configure(fg_color=theme.BG_APP)
+        self.sidebar.destroy()
+        self._nav_buttons = {}
+        self._build_sidebar()
+        self._clear_container()
+        self.container.configure(bg=theme.BG_APP)
+        if active_view == "daily_report":
+            self.open_daily_report_generator()
+        else:
+            self.show_home()
+
     def _set_active_nav(self, active_name: str | None) -> None:
         for name, button in self._nav_buttons.items():
             is_active = name == active_name
@@ -94,6 +142,7 @@ class CatalystApp(ctk.CTk):
             widget.destroy()
 
     def show_home(self):
+        self._active_view = "home"
         self._clear_container()
         self._set_active_nav(None)
 
@@ -118,6 +167,7 @@ class CatalystApp(ctk.CTk):
     def open_daily_report_generator(self):
         from catalyst.tools.daily_report.screen import DailyReportScreen
 
+        self._active_view = "daily_report"
         self._clear_container()
         self._set_active_nav("Daily Report Generator")
         DailyReportScreen(self.container, on_back=self.show_home).pack(fill="both", expand=True)

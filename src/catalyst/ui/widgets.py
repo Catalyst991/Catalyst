@@ -23,7 +23,7 @@ class PrimaryButton(ctk.CTkButton):
         defaults = dict(
             fg_color=theme.ACCENT,
             hover_color=theme.ACCENT_HOVER,
-            text_color="#1A1206",
+            text_color=theme.ON_ACCENT,
             font=theme.font_subheading(),
             corner_radius=theme.RADIUS_MD,
             height=42,

@@ -30,6 +30,21 @@ def test_selecting_a_file_displays_its_name(root, tmp_path, monkeypatch):
     assert screen.file_label.cget("text") == target_path.name
 
 
+def test_the_file_picker_accepts_both_xlsx_and_xlsm(root, monkeypatch):
+    screen = MacroApplierScreen(root, on_back=lambda: None)
+    seen_kwargs = {}
+    monkeypatch.setattr(
+        "catalyst.tools.macro_applier.screen.filedialog.askopenfilename",
+        lambda **kwargs: seen_kwargs.update(kwargs) or "",
+    )
+
+    screen.select_target_file()
+
+    label, pattern = seen_kwargs["filetypes"][0]
+    assert "*.xlsx" in pattern
+    assert "*.xlsm" in pattern
+
+
 def test_task_dropdown_lists_all_four_tasks_and_defaults_to_the_first(root):
     screen = MacroApplierScreen(root, on_back=lambda: None)
 
@@ -172,6 +187,36 @@ def test_a_macro_on_a_different_file_opens_a_new_session(root, tmp_path, monkeyp
     assert session_cls.call_count == 2
 
 
+def test_returning_to_a_previously_selected_file_reuses_its_still_open_session(
+    root, tmp_path, monkeypatch
+):
+    first_path = tmp_path / "first.xlsx"
+    first_path.touch()
+    second_path = tmp_path / "second.xlsx"
+    second_path.touch()
+
+    screen = MacroApplierScreen(root, on_back=lambda: None)
+    screen.task_dropdown.set("Just Social")
+    screen._on_task_selected("Just Social")
+
+    session1 = MagicMock(target_path=first_path.resolve(), apply=MagicMock(return_value=("DONE", "Done.")))
+    session2 = MagicMock(target_path=second_path.resolve(), apply=MagicMock(return_value=("DONE", "Done.")))
+    session_cls = MagicMock(side_effect=[session1, session2])
+    monkeypatch.setattr("catalyst.tools.macro_applier.screen.MacroSession", session_cls)
+    monkeypatch.setattr("catalyst.tools.macro_applier.screen.messagebox.showinfo", MagicMock())
+
+    screen.target_path = first_path
+    screen.macro_buttons[0].cget("command")()  # constructs session1
+    screen.target_path = second_path
+    screen.macro_buttons[0].cget("command")()  # constructs session2
+    screen.target_path = first_path
+    screen.macro_buttons[0].cget("command")()  # must reuse session1, not construct a 3rd
+
+    assert session_cls.call_count == 2
+    assert session1.apply.call_count == 2
+    assert session2.apply.call_count == 1
+
+
 def test_a_failed_apply_shows_a_friendly_message_and_clears_the_session(root, tmp_path, monkeypatch):
     target_path = tmp_path / "target.xlsx"
     target_path.touch()
@@ -193,7 +238,7 @@ def test_a_failed_apply_shows_a_friendly_message_and_clears_the_session(root, tm
     screen.macro_buttons[0].cget("command")()
 
     shown_error.assert_called_once_with("Catalyst", "Couldn't apply Main Twitter:\nboom")
-    assert screen.session is None
+    assert target_path.resolve() not in screen.sessions
 
 
 def test_clicking_a_macro_with_no_target_file_selected_shows_a_guard_message(

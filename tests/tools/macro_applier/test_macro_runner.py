@@ -2,7 +2,6 @@ import shutil
 from pathlib import Path
 
 import openpyxl
-
 import pytest
 
 from catalyst.tools.macro_applier.macro_runner import MacroSession
@@ -148,3 +147,46 @@ def test_a_raised_exception_tears_down_the_session_with_no_orphaned_excel(tmp_pa
 
     assert session.excel is None
     assert session.target_workbook is None
+
+
+def test_a_locked_target_file_is_rejected_with_a_clean_message_before_touching_excel(tmp_path):
+    target_path = tmp_path / "target.xlsx"
+    shutil.copy(RAW_EXPORT_SAMPLE, target_path)
+
+    blocker = MacroSession(target_path)
+    try:
+        with pytest.raises(RuntimeError, match="currently open in another program"):
+            MacroSession(target_path)
+    finally:
+        blocker.close()
+
+
+def test_a_missing_macro_file_shows_excels_own_clean_message_not_a_raw_com_error(tmp_path):
+    target_path = tmp_path / "target.xlsx"
+    shutil.copy(RAW_EXPORT_SAMPLE, target_path)
+
+    session = MacroSession(target_path)
+    with pytest.raises(RuntimeError) as excinfo:
+        session.apply(tmp_path / "does_not_exist.xlsm", "Whatever")
+
+    message = str(excinfo.value)
+    assert "moved, renamed or deleted" in message
+    assert "com_error" not in message
+    assert session.excel is None
+
+
+def test_applying_a_macro_to_an_xlsm_target_preserves_its_own_existing_macros(tmp_path):
+    # openpyxl's keep_vba archive emits a harmless PytestUnraisableExceptionWarning
+    # on GC (an upstream openpyxl quirk, not caused by anything here).
+    target_path = tmp_path / "target.xlsm"
+    openpyxl.load_workbook(MAIN_TWITTER.path, keep_vba=True).save(target_path)
+
+    session = MacroSession(target_path)
+    try:
+        result = session.apply(DAILY_REPORT_FORMATTING.path, DAILY_REPORT_FORMATTING.macro_name)
+    finally:
+        session.close()
+
+    assert result == ("DONE", "Done.")
+    reloaded = openpyxl.load_workbook(target_path, keep_vba=True)
+    assert reloaded.vba_archive is not None

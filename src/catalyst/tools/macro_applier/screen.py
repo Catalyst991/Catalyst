@@ -25,7 +25,7 @@ class MacroApplierScreen(Panel):
         self.target_path: Path | None = None
         self.tasks_by_name = {task.name: task for task in TASKS}
         self.macro_buttons: list[ctk.CTkButton] = []
-        self.session: MacroSession | None = None
+        self.sessions: dict[Path, MacroSession] = {}
 
         self._build_header()
         self._build_file_card()
@@ -125,20 +125,23 @@ class MacroApplierScreen(Panel):
             return
 
         target_path = self.target_path.resolve()
-        if self.session is None or self.session.target_path != target_path:
-            self.session = MacroSession(target_path)
         try:
+            session = self.sessions.get(target_path)
+            if session is None:
+                session = MacroSession(target_path)
+                self.sessions[target_path] = session
+
             if macro.needs_confirmation:
-                status, message = self.session.apply(macro.path, macro.macro_name, False)
+                status, message = session.apply(macro.path, macro.macro_name, False)
                 if status == "CONFIRM":
                     if not messagebox.askyesno("Catalyst", message):
                         return
-                    status, message = self.session.apply(macro.path, macro.macro_name, True)
+                    status, message = session.apply(macro.path, macro.macro_name, True)
             else:
-                result = self.session.apply(macro.path, macro.macro_name)
+                result = session.apply(macro.path, macro.macro_name)
                 status, message = result if result else ("DONE", None)
         except Exception as exc:
-            self.session = None
+            self.sessions.pop(target_path, None)
             messagebox.showerror("Catalyst", f"Couldn't apply {macro.name}:\n{exc}")
             return
 
@@ -150,7 +153,9 @@ class MacroApplierScreen(Panel):
             messagebox.showinfo("Catalyst", f"{macro.name} applied and saved.")
 
     def select_target_file(self):
-        path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        path = filedialog.askopenfilename(
+            filetypes=[("Excel files", "*.xlsx *.xlsm")]
+        )
         if path:
             self.target_path = Path(path)
             self.file_label.configure(text=self.target_path.name, text_color=theme.TEXT_PRIMARY)

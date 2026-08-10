@@ -1,7 +1,16 @@
 import faulthandler
 from pathlib import Path
 
+import pywintypes
 import win32com.client
+
+
+def _clean_message(exc: Exception) -> str:
+    """Excel's own COM errors bury a human-readable message inside an
+    otherwise unreadable exception repr; surface just that part."""
+    if isinstance(exc, pywintypes.com_error) and exc.excepinfo and exc.excepinfo[2]:
+        return exc.excepinfo[2].strip()
+    return str(exc)
 
 
 class MacroSession:
@@ -18,6 +27,10 @@ class MacroSession:
 
     def __init__(self, target_path):
         self.target_path = Path(target_path).resolve()
+        self.excel = None
+        self.target_workbook = None
+        self._check_not_locked(self.target_path)
+
         # DispatchEx (not Dispatch) forces a brand-new Excel process. Plain
         # Dispatch attaches to whatever Excel.Application is already running
         # via the ROT, so a second session's close()/Quit() would take down
@@ -27,18 +40,46 @@ class MacroSession:
         # Without this, Excel may quit itself once the last COM reference to
         # it is released, even though it's visible with a workbook open.
         self.excel.UserControl = True
-        self.target_workbook = self.excel.Workbooks.Open(str(self.target_path))
+        # Suppresses Excel's own confirmation popups (format-mismatch
+        # warnings, "keep macros?" prompts, etc.) - anything not already
+        # handled by the Array(status, message) protocol would otherwise
+        # block forever under unattended automation.
+        self.excel.DisplayAlerts = False
+        try:
+            self.target_workbook = self.excel.Workbooks.Open(str(self.target_path))
+        except Exception as exc:
+            self._quit_excel()
+            raise RuntimeError(_clean_message(exc)) from exc
+
+    @staticmethod
+    def _check_not_locked(path: Path) -> None:
+        # Excel's own COM automation doesn't reliably fail up front when a
+        # target file is already open elsewhere - a second Excel process can
+        # silently open it too, risking a clobbered save later. A plain OS
+        # file handle catches the lock immediately and cleanly instead.
+        try:
+            with open(path, "r+b"):
+                pass
+        except OSError as exc:
+            raise RuntimeError(
+                f"{path.name} is currently open in another program. Close it and try again."
+            ) from exc
 
     def apply(self, macro_path, macro_name: str, *args):
         macro_path = Path(macro_path).resolve()
-        macro_workbook = self.excel.Workbooks.Open(str(macro_path))
+        try:
+            macro_workbook = self.excel.Workbooks.Open(str(macro_path))
+        except Exception as exc:
+            self.close()
+            raise RuntimeError(_clean_message(exc)) from exc
+
         try:
             self.target_workbook.Activate()
             result = self.excel.Application.Run(f"'{macro_path.name}'!{macro_name}", *args)
-        except Exception:
+        except Exception as exc:
             macro_workbook.Close(False)
             self.close()
-            raise
+            raise RuntimeError(_clean_message(exc)) from exc
 
         status = result[0] if isinstance(result, tuple) else None
         if status == "ERROR":
@@ -59,8 +100,15 @@ class MacroSession:
         if self.excel is None:
             return
         target_workbook = self.target_workbook
+        self.target_workbook = None
+        if target_workbook is not None:
+            target_workbook.Close(False)
+            del target_workbook
+        self._quit_excel()
+
+    def _quit_excel(self) -> None:
         excel = self.excel
-        target_workbook.Close(False)
+        self.excel = None
         # See pdf_exporter.export_to_pdf for why faulthandler must be
         # suppressed around Quit() and the local COM references dropped
         # explicitly inside that window.
@@ -69,9 +117,6 @@ class MacroSession:
         try:
             excel.Quit()
         finally:
-            del target_workbook
             del excel
-            self.target_workbook = None
-            self.excel = None
             if was_enabled:
                 faulthandler.enable()

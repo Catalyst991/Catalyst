@@ -1,16 +1,12 @@
 ; Inno Setup script for Catalyst.
 ; Build the app first (from the repo root):
-;   pyinstaller --noconfirm --clean --name Catalyst --windowed --onedir ^
-;     --icon src\catalyst\ui\icon.ico --paths src ^
-;     --add-data "src\catalyst\tools\daily_report\assets\template.pptx;catalyst\tools\daily_report\assets" ^
-;     --add-data "src\catalyst\ui\icon.ico;catalyst\ui" ^
-;     run.py
+;   pyinstaller --noconfirm Catalyst.spec
 ; Then compile this script (from the installer\ folder):
 ;   ISCC Catalyst.iss
 ; The finished installer lands in installer\output\CatalystSetup.exe
 
 #define MyAppName "Catalyst"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "2.0.0"
 #define MyAppPublisher "Catalyst"
 #define MyAppExeName "Catalyst.exe"
 

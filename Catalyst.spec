@@ -5,7 +5,7 @@ a = Analysis(
     ['run.py'],
     pathex=['src'],
     binaries=[],
-    datas=[('src/catalyst/tools/daily_report/assets/template.pptx', 'catalyst/tools/daily_report/assets'), ('src/catalyst/ui/icon.ico', 'catalyst/ui')],
+    datas=[('src/catalyst/tools/daily_report/assets/template.pptx', 'catalyst/tools/daily_report/assets'), ('src/catalyst/ui/icon.ico', 'catalyst/ui'), ('src/catalyst/tools/macro_applier/assets/*.xlsm', 'catalyst/tools/macro_applier/assets')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

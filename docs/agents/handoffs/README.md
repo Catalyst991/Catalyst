@@ -11,11 +11,11 @@ of the in-flight context here so the next session can resume without losing stat
 
 Files are named using the pattern:
 
-  YYYY-MM-DD_<slug>.md
+  YYYY-MM-DD-<slug>-handoff.md
 
 where `<slug>` is a short kebab-case description of the feature or task in progress
-(e.g. `2025-06-07_auth-refactor.md`). If multiple handoffs happen on the same day for
-the same task, append a counter: `2025-06-07_auth-refactor-2.md`.
+(e.g. `2025-06-07-auth-refactor-handoff.md`). If multiple handoffs happen on the same day for
+the same task, append a counter: `2025-06-07-auth-refactor-handoff-2.md`.
 
 ## Resuming a session
 

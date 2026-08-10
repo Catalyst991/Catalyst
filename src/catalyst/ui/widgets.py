@@ -106,3 +106,146 @@ class OptionGroup(Panel):
     def set(self, value: str) -> None:
         self._selected = value
         self._refresh_colors()
+
+
+class Dropdown(ctk.CTkFrame):
+    """A CTkOptionMenu-alike whose popup is a themed, rounded CTkFrame in a
+    borderless Toplevel, rather than CTkOptionMenu's own dropdown — which is
+    a subclass of the OS-native tkinter.Menu (see customtkinter's
+    DropdownMenu) and so ignores corner_radius entirely on Windows. Mirrors
+    CTkOptionMenu's .get()/.set()/cget("values") interface so it's a drop-in
+    replacement.
+    """
+
+    def __init__(self, master, values: list, default: str | None = None, command=None, **kwargs):
+        defaults = dict(fg_color=theme.BG_SURFACE_HOVER, corner_radius=theme.RADIUS_MD, height=36)
+        defaults.update(kwargs)
+        super().__init__(master, **defaults)
+        self.pack_propagate(False)
+
+        self._values = list(values)
+        self._selected = default or self._values[0]
+        self._command = command
+        self._popup: tk.Toplevel | None = None
+
+        self._label = ctk.CTkLabel(
+            self,
+            text=self._selected,
+            font=theme.font_body(),
+            text_color=theme.TEXT_PRIMARY,
+            anchor="w",
+        )
+        self._label.pack(side="left", fill="both", expand=True, padx=(theme.PAD_MD, 0))
+
+        self._chevron = ctk.CTkLabel(
+            self, text="▾", font=theme.font_body(), text_color=theme.TEXT_SECONDARY, width=20
+        )
+        self._chevron.pack(side="right", padx=(0, theme.PAD_MD))
+
+        for widget in (self, self._label, self._chevron):
+            widget.bind("<Button-1>", self._on_click)
+            widget.bind("<Enter>", self._on_enter)
+            widget.bind("<Leave>", self._on_leave)
+
+    def get(self) -> str:
+        return self._selected
+
+    def set(self, value: str) -> None:
+        self._selected = value
+        self._label.configure(text=value)
+
+    def cget(self, key):
+        if key == "values":
+            return self._values
+        return super().cget(key)
+
+    def _on_enter(self, _event=None):
+        self.configure(fg_color=theme.ACCENT_MUTED)
+
+    def _on_leave(self, _event=None):
+        self.configure(fg_color=theme.BG_SURFACE_HOVER)
+
+    def _on_click(self, _event=None):
+        if self._popup is not None:
+            self._close_popup()
+        else:
+            self._open_popup()
+
+    def _open_popup(self):
+        popup = tk.Toplevel(self)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        # No true per-pixel window transparency without Win32 region masking,
+        # so this background shows as small squared-off corners just outside
+        # the rounded frame below. BG_APP keeps that seam close to invisible
+        # against the screen background the popup normally opens over.
+        popup.configure(bg=theme.BG_APP)
+
+        x = self.winfo_rootx()
+        y = self.winfo_rooty() + self.winfo_height() + 4
+        popup.geometry(f"{self.winfo_width()}x{len(self._values) * 36 + 8}+{x}+{y}")
+
+        frame = ctk.CTkFrame(popup, fg_color=theme.BG_SURFACE, corner_radius=theme.RADIUS_MD)
+        frame.pack(fill="both", expand=True)
+
+        for value in self._values:
+            item = ctk.CTkButton(
+                frame,
+                text=value,
+                anchor="w",
+                fg_color="transparent",
+                hover_color=theme.ACCENT_MUTED,
+                text_color=theme.TEXT_PRIMARY,
+                font=theme.font_body(),
+                corner_radius=theme.RADIUS_SM,
+                height=32,
+                command=lambda v=value: self._select(v),
+            )
+            item.pack(fill="x", padx=4, pady=2)
+
+        self._popup = popup
+        # Click-outside-to-close, implemented via a global ButtonRelease-1
+        # rather than <FocusOut> on the popup: FocusOut fires the instant a
+        # child widget (like one of the item buttons above) takes focus on
+        # press, which is *before* that button's own click fires its
+        # command — so a FocusOut-driven close would destroy the popup out
+        # from under the very click that was selecting an item. Listening
+        # app-wide on release instead lets the clicked widget's own binding
+        # run first (Tk dispatches the widget-specific binding before the
+        # "all" bindtag for the same event), so a real item selection has
+        # already happened by the time this fires and finds self._popup is
+        # already None.
+        # bind_all/unbind_all must go through `popup` (a plain tk.Toplevel),
+        # not `self` — customtkinter's CTkBaseClass overrides both to raise,
+        # since it relies on the "all" bindtag for its own internals. The
+        # binding itself is still process-global either way; only the
+        # widget used to install/remove it matters.
+        popup.bind_all("<ButtonRelease-1>", self._on_global_click, add="+")
+
+    def _on_global_click(self, event):
+        if self._popup is None:
+            return
+        widget = event.widget
+        if self._is_descendant(widget, self) or self._is_descendant(widget, self._popup):
+            return
+        self._close_popup()
+
+    @staticmethod
+    def _is_descendant(widget, ancestor) -> bool:
+        while widget is not None:
+            if widget == ancestor:
+                return True
+            widget = getattr(widget, "master", None)
+        return False
+
+    def _select(self, value: str) -> None:
+        self.set(value)
+        self._close_popup()
+        if self._command is not None:
+            self._command(value)
+
+    def _close_popup(self) -> None:
+        if self._popup is not None:
+            self._popup.unbind_all("<ButtonRelease-1>")
+            self._popup.destroy()
+            self._popup = None

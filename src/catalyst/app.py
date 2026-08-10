@@ -26,7 +26,10 @@ class CatalystApp(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        self.tools = build_registry(daily_report_open=self.open_daily_report_generator)
+        self.tools = build_registry(
+            daily_report_open=self.open_daily_report_generator,
+            macro_applier_open=self.open_macro_applier,
+        )
         self._nav_buttons: dict[str, ctk.CTkButton] = {}
         self._active_view = "home"
 
@@ -126,6 +129,8 @@ class CatalystApp(ctk.CTk):
         self.container.configure(bg=theme.BG_APP)
         if active_view == "daily_report":
             self.open_daily_report_generator()
+        elif active_view == "macro_applier":
+            self.open_macro_applier()
         else:
             self.show_home()
 
@@ -171,6 +176,14 @@ class CatalystApp(ctk.CTk):
         self._clear_container()
         self._set_active_nav("Daily Report Generator")
         DailyReportScreen(self.container, on_back=self.show_home).pack(fill="both", expand=True)
+
+    def open_macro_applier(self):
+        from catalyst.tools.macro_applier.screen import MacroApplierScreen
+
+        self._active_view = "macro_applier"
+        self._clear_container()
+        self._set_active_nav("Macro Applier")
+        MacroApplierScreen(self.container, on_back=self.show_home).pack(fill="both", expand=True)
 
 
 def main():

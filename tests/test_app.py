@@ -59,6 +59,21 @@ def test_toggling_theme_switches_mode_and_rebuilds_sidebar(app):
         app.set_theme_mode(original_mode)
 
 
+def test_home_screen_lists_macro_applier(app):
+    button_texts = [b.cget("text") for b in _buttons(app)]
+    assert any("Macro Applier" in text for text in button_texts)
+
+
+def test_selecting_macro_applier_opens_its_screen(app):
+    button = next(b for b in _buttons(app) if "Macro Applier" in b.cget("text"))
+
+    button.cget("command")()
+
+    from catalyst.tools.macro_applier.screen import MacroApplierScreen
+
+    assert any(isinstance(child, MacroApplierScreen) for child in app.container.winfo_children())
+
+
 def test_toggling_theme_preserves_the_active_view(app):
     from catalyst.tools.daily_report.screen import DailyReportScreen
     from catalyst.ui import theme

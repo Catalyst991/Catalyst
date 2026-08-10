@@ -8,5 +8,10 @@ class Tool:
     open: Callable[[], None]
 
 
-def build_registry(daily_report_open: Callable[[], None]) -> list[Tool]:
-    return [Tool(name="Daily Report Generator", open=daily_report_open)]
+def build_registry(
+    daily_report_open: Callable[[], None], macro_applier_open: Callable[[], None]
+) -> list[Tool]:
+    return [
+        Tool(name="Daily Report Generator", open=daily_report_open),
+        Tool(name="Macro Applier", open=macro_applier_open),
+    ]

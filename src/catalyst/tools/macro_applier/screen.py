@@ -120,6 +120,10 @@ class MacroApplierScreen(Panel):
             self.macro_buttons.append(button)
 
     def _apply_macro(self, macro):
+        if self.target_path is None:
+            messagebox.showerror("Catalyst", "Please select an Excel file first.")
+            return
+
         target_path = self.target_path.resolve()
         if self.session is None or self.session.target_path != target_path:
             self.session = MacroSession(target_path)
@@ -133,12 +137,13 @@ class MacroApplierScreen(Panel):
             else:
                 result = self.session.apply(macro.path, macro.macro_name)
                 status, message = result if result else ("DONE", None)
-        except Exception:
+        except Exception as exc:
             self.session = None
-            raise
+            messagebox.showerror("Catalyst", f"Couldn't apply {macro.name}:\n{exc}")
+            return
 
         if status == "ERROR":
-            messagebox.showerror("Catalyst", f"{macro.name} failed.\n\n{message}")
+            messagebox.showerror("Catalyst", f"Couldn't apply {macro.name}:\n{message}")
         elif message:
             messagebox.showinfo("Catalyst", f"{macro.name}\n\n{message}")
         else:

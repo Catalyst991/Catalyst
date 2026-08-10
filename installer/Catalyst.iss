@@ -6,7 +6,7 @@
 ; The finished installer lands in installer\output\CatalystSetup.exe
 
 #define MyAppName "Catalyst"
-#define MyAppVersion "2.0.0"
+#define MyAppVersion "2.0.1"
 #define MyAppPublisher "Catalyst"
 #define MyAppExeName "Catalyst.exe"
 

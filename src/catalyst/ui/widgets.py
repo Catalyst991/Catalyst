@@ -181,10 +181,6 @@ class Dropdown(ctk.CTkFrame):
         # against the screen background the popup normally opens over.
         popup.configure(bg=theme.BG_APP)
 
-        x = self.winfo_rootx()
-        y = self.winfo_rooty() + self.winfo_height() + 4
-        popup.geometry(f"{self.winfo_width()}x{len(self._values) * 36 + 8}+{x}+{y}")
-
         frame = ctk.CTkFrame(popup, fg_color=theme.BG_SURFACE, corner_radius=theme.RADIUS_MD)
         frame.pack(fill="both", expand=True)
 
@@ -202,6 +198,15 @@ class Dropdown(ctk.CTkFrame):
                 command=lambda v=value: self._select(v),
             )
             item.pack(fill="x", padx=4, pady=2)
+
+        # Size off the frame's actual rendered height rather than a guessed
+        # px-per-item constant: CTk scales widget heights by the display's
+        # DPI/scaling factor, so a fixed formula sized correctly at 100%
+        # scaling clips items on a monitor with a different scaling setting.
+        popup.update_idletasks()
+        x = self.winfo_rootx()
+        y = self.winfo_rooty() + self.winfo_height() + 4
+        popup.geometry(f"{self.winfo_width()}x{frame.winfo_reqheight()}+{x}+{y}")
 
         self._popup = popup
         # Click-outside-to-close, implemented via a global ButtonRelease-1

@@ -127,6 +127,7 @@ class Dropdown(ctk.CTkFrame):
         self._selected = default or self._values[0]
         self._command = command
         self._popup: tk.Toplevel | None = None
+        self._unmap_binding: str | None = None
 
         self._label = ctk.CTkLabel(
             self,
@@ -146,6 +147,13 @@ class Dropdown(ctk.CTkFrame):
             widget.bind("<Button-1>", self._on_click)
             widget.bind("<Enter>", self._on_enter)
             widget.bind("<Leave>", self._on_leave)
+
+        # The root's <Unmap> binding (see _open_popup) targets a window that
+        # can outlive this widget (tool screens get destroyed and rebuilt on
+        # the same long-lived root). Without this, a Dropdown destroyed
+        # while its popup binding is still registered leaves a stale
+        # binding on the root pointing at a dead widget.
+        self.bind("<Destroy>", self._on_destroy, add="+")
 
     def get(self) -> str:
         return self._selected
@@ -227,6 +235,16 @@ class Dropdown(ctk.CTkFrame):
         # widget used to install/remove it matters.
         popup.bind_all("<ButtonRelease-1>", self._on_global_click, add="+")
 
+        # overrideredirect + topmost means Windows won't hide this popup
+        # when the main window is minimized — it would otherwise keep
+        # floating on top of every other app. Close it explicitly instead.
+        self._unmap_binding = self.winfo_toplevel().bind(
+            "<Unmap>", self._on_root_unmap, add="+"
+        )
+
+    def _on_root_unmap(self, _event=None):
+        self._close_popup()
+
     def _on_global_click(self, event):
         if self._popup is None:
             return
@@ -250,6 +268,19 @@ class Dropdown(ctk.CTkFrame):
             self._command(value)
 
     def _close_popup(self) -> None:
+        if self._popup is not None:
+            self._popup.unbind_all("<ButtonRelease-1>")
+            self._remove_unmap_binding()
+            self._popup.destroy()
+            self._popup = None
+
+    def _remove_unmap_binding(self) -> None:
+        if self._unmap_binding is not None:
+            self.winfo_toplevel().unbind("<Unmap>", self._unmap_binding)
+            self._unmap_binding = None
+
+    def _on_destroy(self, _event=None) -> None:
+        self._remove_unmap_binding()
         if self._popup is not None:
             self._popup.unbind_all("<ButtonRelease-1>")
             self._popup.destroy()

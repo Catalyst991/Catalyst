@@ -40,11 +40,6 @@ class MacroSession:
         # Without this, Excel may quit itself once the last COM reference to
         # it is released, even though it's visible with a workbook open.
         self.excel.UserControl = True
-        # Suppresses Excel's own confirmation popups (format-mismatch
-        # warnings, "keep macros?" prompts, etc.) - anything not already
-        # handled by the Array(status, message) protocol would otherwise
-        # block forever under unattended automation.
-        self.excel.DisplayAlerts = False
         try:
             self.target_workbook = self.excel.Workbooks.Open(str(self.target_path))
         except Exception as exc:
@@ -67,34 +62,48 @@ class MacroSession:
 
     def apply(self, macro_path, macro_name: str, *args):
         macro_path = Path(macro_path).resolve()
+        # Suppresses Excel's own confirmation popups (format-mismatch
+        # warnings, "keep macros?" prompts, etc.) for exactly this
+        # automated run - anything not already handled by the
+        # Array(status, message) protocol would otherwise block forever
+        # under unattended automation. Scoped to just this call and always
+        # restored below: left False for the whole visible session, it also
+        # suppresses Excel's native "save changes?" prompt, silently
+        # discarding any edits the user makes by hand afterward whenever
+        # they close the workbook without an explicit save.
+        self.excel.DisplayAlerts = False
         try:
-            macro_workbook = self.excel.Workbooks.Open(str(macro_path))
-        except Exception as exc:
-            self.close()
-            raise RuntimeError(_clean_message(exc)) from exc
+            try:
+                macro_workbook = self.excel.Workbooks.Open(str(macro_path))
+            except Exception as exc:
+                self.close()
+                raise RuntimeError(_clean_message(exc)) from exc
 
-        try:
-            self.target_workbook.Activate()
-            result = self.excel.Application.Run(f"'{macro_path.name}'!{macro_name}", *args)
-        except Exception as exc:
+            try:
+                self.target_workbook.Activate()
+                result = self.excel.Application.Run(f"'{macro_path.name}'!{macro_name}", *args)
+            except Exception as exc:
+                macro_workbook.Close(False)
+                self.close()
+                raise RuntimeError(_clean_message(exc)) from exc
+
+            status = result[0] if isinstance(result, tuple) else None
+            if status == "ERROR":
+                # The macro reported its own failure without raising. Discard
+                # whatever it mutated in memory and reload from the last saved
+                # state, so neither the file on disk nor the open window shows
+                # a partial run.
+                self.target_workbook.Close(False)
+                self.target_workbook = self.excel.Workbooks.Open(str(self.target_path))
+            elif status != "CONFIRM":
+                self.target_workbook.Save()
+
             macro_workbook.Close(False)
-            self.close()
-            raise RuntimeError(_clean_message(exc)) from exc
-
-        status = result[0] if isinstance(result, tuple) else None
-        if status == "ERROR":
-            # The macro reported its own failure without raising. Discard
-            # whatever it mutated in memory and reload from the last saved
-            # state, so neither the file on disk nor the open window shows
-            # a partial run.
-            self.target_workbook.Close(False)
-            self.target_workbook = self.excel.Workbooks.Open(str(self.target_path))
-        elif status != "CONFIRM":
-            self.target_workbook.Save()
-
-        macro_workbook.Close(False)
-        self.target_workbook.Activate()
-        return result
+            self.target_workbook.Activate()
+            return result
+        finally:
+            if self.excel is not None:
+                self.excel.DisplayAlerts = True
 
     def close(self) -> None:
         if self.excel is None:
